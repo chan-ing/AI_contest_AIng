@@ -32,5 +32,5 @@ print(len(tmp))
 # 특정 행 삭제
 data = data.drop(tmp) 
 
-data.to_csv("./removeoutlierdataset/train_removeoutlier.csv", index=False)
+data.to_csv("./train_removeoutlier.csv", index=False)
 
