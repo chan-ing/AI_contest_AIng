@@ -120,7 +120,7 @@ if __name__ == '__main__':
     )
 
     dataset = SatelliteDataset(csv_file='./train.csv', transform=transform)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8)
+    dataloader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=8)
 
 
     # U-Net의 기본 구성 요소인 Double Convolution Block을 정의합니다.
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # training loop
-    for epoch in range(5):  # 10 에폭 동안 학습합니다.
+    for epoch in range(50):  # 10 에폭 동안 학습합니다.
         model.train()
         epoch_loss = 0
         for images, masks in tqdm(dataloader):
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         print(f'Epoch {epoch+1}, Loss: {epoch_loss/len(dataloader)}')
 
     test_dataset = SatelliteDataset(csv_file='./test.csv', transform=transform, infer=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=8)
+    test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=8)
 
     with torch.no_grad():
         model.eval()
