@@ -13,7 +13,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-torch.cuda.set_per_process_memory_fraction(0.9)
+#torch.cuda.set_per_process_memory_fraction(0.9)
 
 class SatelliteDataset(Dataset):
     def __init__(self, csv_file, transform=None, infer=False):
@@ -53,7 +53,7 @@ class UNet(nn.Module):
         self.dconv_down4 = double_conv(256, 512)
 
         self.maxpool = nn.MaxPool2d(2)
-        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)        
 
         self.dconv_up3 = double_conv(256 + 512, 256)
         self.dconv_up2 = double_conv(128 + 256, 128)
@@ -67,22 +67,22 @@ class UNet(nn.Module):
 
         conv2 = self.dconv_down2(x)
         x = self.maxpool(conv2)
-
+        
         conv3 = self.dconv_down3(x)
-        x = self.maxpool(conv3)
+        x = self.maxpool(conv3)   
 
         x = self.dconv_down4(x)
 
-        x = self.upsample(x)
+        x = self.upsample(x)        
         x = torch.cat([x, conv3], dim=1)
 
         x = self.dconv_up3(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv2], dim=1)
+        x = self.upsample(x)        
+        x = torch.cat([x, conv2], dim=1)       
 
         x = self.dconv_up2(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv1], dim=1)
+        x = self.upsample(x)        
+        x = torch.cat([x, conv1], dim=1)   
 
         x = self.dconv_up1(x)
 
