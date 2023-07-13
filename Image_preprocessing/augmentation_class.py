@@ -1,6 +1,5 @@
 import os
 import glob
-import torch
 import matplotlib.pyplot as plt
 import albumentations as A
 from tqdm import tqdm
@@ -42,22 +41,18 @@ class Augmentation:
                 image_output_path = os.path.join(self.image_output_folder, image_output_name) #최종파일 경로 설정
                 mask_output_path = os.path.join(self.mask_output_folder, mask_output_name)
 
-                os.makedirs(self.image_output_folder, exist_ok=True) #폴더가 존재하지 않을때 폴더 생성
-                os.makedirs(self.mask_output_folder, exist_ok=True)
+                # os.makedirs(self.image_output_folder, exist_ok=True) #폴더가 존재하지 않을때 폴더 생성
+                # os.makedirs(self.mask_output_folder, exist_ok=True)
                 
                 plt.imsave(image_output_path, transformed_image, format='png')  #png파일로 저장
                 plt.imsave(mask_output_path, transformed_mask, format='png')
 
-#from augmentation_class import *
-
-# 입력 및 출력 경로 설정
-image_input_folder = "./train_img2"
-mask_input_folder = "./mask_img2"
-image_output_folder = "./image_augmentation_img"
-mask_output_folder = "./mask_augmentation_img"
-
-# ImageAugmenter 인스턴스 생성
-augmenter = Augmentation(image_input_folder, mask_input_folder, image_output_folder, mask_output_folder)
-
-# 이미지 증강 수행
-augmenter.augment_images()
+# # 경로 설정
+# image_folder = "./patch_train_img"
+# mask_folder = "./patch_train_mask_img"
+#
+# # ImageAugmenter 인스턴스 생성
+# augmenter = Augmentation(image_folder, mask_folder, image_folder, mask_folder)
+#
+# # 이미지 증강 수행
+# augmenter.augment_images()
