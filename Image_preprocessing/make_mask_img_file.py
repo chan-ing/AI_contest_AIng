@@ -1,10 +1,8 @@
-# encoded data > image 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
-
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
 
 class MaskImageCreator:
     def __init__(self, filename):
@@ -26,17 +24,17 @@ class MaskImageCreator:
         mask_rle_column = data['mask_rle']
         cmap = plt.cm.colors.ListedColormap(['black', 'yellow'])
 
-        output_folder = "./train_mask_img"
+        output_folder = "./train_mask_img/"
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
         for i in tqdm(range(len(mask_rle_column)), desc="Processing", unit="image"):
             data_list = mask_rle_column[i].split()
             mask = self.make_mask_image_for_training(data_list)
-            path = os.path.join(output_folder, f"/MASK_{i:04}.png")
+            path = os.path.join(output_folder, f"MASK_{i:04}.png")
             plt.imsave(path, mask, cmap=cmap)
 
-
+#
 # # Usage example
 # mask_creator = MaskImageCreator("./train.csv")
 # mask_creator.create_mask_image()
