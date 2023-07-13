@@ -149,7 +149,7 @@ class FocalLoss(nn.Module):
         self.alpha = alpha
         self.gamma = gamma
 
-    def forward(self, inputs, targets):
+    def backward(self, inputs, targets):
         bce_loss = nn.BCEWithLogitsLoss(reduction='none')(inputs, targets)
 
         pt = torch.exp(-bce_loss)  # 확률 값 계산
