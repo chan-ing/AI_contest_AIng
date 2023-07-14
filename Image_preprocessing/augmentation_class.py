@@ -43,8 +43,8 @@ class Augmentation:
                 transformed_image = transformed['image']
                 transformed_mask = transformed['mask']
 
-                image_output_name = f"augmentation_{i}" + image_name + ".png"
-                mask_output_name = f"augmentation_{i}" + mask_name + ".png"
+                image_output_name = f"augmentation_" + image_name + ".png"
+                mask_output_name = f"augmentation_" + mask_name + ".png"
                 image_output_path = os.path.join(self.image_output_folder, image_output_name)
                 mask_output_path = os.path.join(self.mask_output_folder, mask_output_name)
 
