@@ -15,10 +15,11 @@ class MaskImageCreator:
                 for j in range(int(lst[i + 1])):
                     mask[k] = 1
                     k += 1
-        mask_image = Image.new("L", (1024, 1024))
+        mask_image = Image.new('P', (1024, 1024))
         mask_image.putdata(mask)
-        return mask_image
-
+        mask_image.putpalette([0, 0, 0, 255, 255, 0])
+        return mask_image\
+    
     def create_mask_image(self):
         data = pd.read_csv(self.filename)
         mask_rle_column = data['mask_rle']
