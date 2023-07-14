@@ -23,7 +23,9 @@ class Augmentation:
     def augment_images(self):
         image_files = [f for f in os.listdir(self.image_input_folder) if f.lower().endswith(".png")]
         mask_files = [f for f in os.listdir(self.mask_input_folder) if f.lower().endswith(".png")]
-        for image_file, mask_file in tqdm(zip(image_files, mask_files)):
+        total_files = len(image_files)
+        progress_bar = tqdm(total=total_files, desc="Augmenting Images", unit="image")
+        for image_file, mask_file in zip(image_files, mask_files):
             image_name = os.path.basename(image_file)
             mask_name = os.path.basename(mask_file)
 
@@ -36,7 +38,7 @@ class Augmentation:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # BGR에서 RGB로 변환
             mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)  # BGR에서 RGB로 변환
 
-            for i in range(5):
+            for i in range(3):
                 transformed = self.transform(image=image, mask=mask)
                 transformed_image = transformed['image']
                 transformed_mask = transformed['mask']
@@ -49,6 +51,8 @@ class Augmentation:
                 plt.imsave(image_output_path, transformed_image, format='png')
                 plt.imsave(mask_output_path, transformed_mask, format='png')
 
+                progress_bar.update(1)
+        progress_bar.close()
 # # 경로 설정
 # image_folder = "./patch_train_img"
 # mask_folder = "./patch_train_mask_img"
