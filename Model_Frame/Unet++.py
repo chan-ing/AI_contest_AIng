@@ -134,7 +134,6 @@ class UNetpp(nn.Module):
         x0_0 = self.dconv_down0_0(x)   #32,224,224
         x = self.maxpool(x0_0)           #32,112,112
         x1_0 = self.dconv_down1_0(x)       #64,112,112
-        x = self.upsample(x1_0)
         x = torch.cat([x0_0, self.upsample(x1_0)], dim=1)  #64+32,224,224
         x0_1 = self.dconv_down0_1(x)   #32,224,224
 
