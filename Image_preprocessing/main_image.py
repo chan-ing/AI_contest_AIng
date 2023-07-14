@@ -2,7 +2,7 @@ from make_mask_img_file import *
 from crop_patchify_img import *
 from image_checker import *
 from cropped_image_rm_outlier import *
-#from augmentation_class import *
+from augmentation_class import *
 
 #실행전 현재 디렉토리안에 test.csv, train.csv, test_img 폴더, train_img 폴더가 있어야 합니다.
 
@@ -30,13 +30,13 @@ mask_folder_path = './patch_train_mask_img'
 processor = RemoveException_for_CroppedImage(train_folder_path, mask_folder_path)
 processor.removeException()
 
-# #augmentation
-# # 경로 설정
-# image_folder = "./patch_train_img"
-# mask_folder = "./patch_train_mask_img"
-#
-# # ImageAugmenter 인스턴스 생성
-# augmenter = Augmentation(image_folder, mask_folder, image_folder, mask_folder)
-#
-# # 이미지 증강 수행
-# augmenter.augment_images()
+#augmentation
+#경로 설정
+image_folder = "./patch_train_img"
+mask_folder = "./patch_train_mask_img"
+
+# ImageAugmenter 인스턴스 생성
+augmenter = Augmentation(image_folder, mask_folder, image_folder, mask_folder)
+
+# 이미지 증강 수행
+augmenter.augment_images()
