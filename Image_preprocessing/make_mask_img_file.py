@@ -1,8 +1,7 @@
 from tqdm import tqdm
 import os
-import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+from PIL import Image
 
 class MaskImageCreator:
     def __init__(self, filename):
@@ -16,13 +15,13 @@ class MaskImageCreator:
                 for j in range(int(lst[i + 1])):
                     mask[k] = 1
                     k += 1
-        mask_image = np.array(mask).reshape((1024, 1024))
+        mask_image = Image.new("L", (1024, 1024))
+        mask_image.putdata(mask)
         return mask_image
 
     def create_mask_image(self):
         data = pd.read_csv(self.filename)
         mask_rle_column = data['mask_rle']
-        cmap = plt.cm.colors.ListedColormap(['black', 'yellow'])
 
         output_folder = "./train_mask_img/"
         if not os.path.exists(output_folder):
@@ -32,7 +31,7 @@ class MaskImageCreator:
             data_list = mask_rle_column[i].split()
             mask = self.make_mask_image_for_training(data_list)
             path = os.path.join(output_folder, f"MASK_{i:04}.png")
-            plt.imsave(path, mask, cmap=cmap)
+            mask.save(path)
 
 #
 # # Usage example
