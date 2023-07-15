@@ -62,8 +62,8 @@ class Augmentation:
                 augmented_image_output_path = os.path.join(self.image_output_folder, augmented_image_new_name)
                 augmented_mask_output_path = os.path.join(self.mask_output_folder, augmented_mask_new_name)
 
-                plt.imsave(augmented_image_output_path, transformed_image, format='png')
-                plt.imsave(augmented_mask_output_path, transformed_mask, format='png')
+                cv2.imwrite(augmented_image_output_path, cv2.cvtColor(transformed_image, cv2.COLOR_RGB2BGR))
+                cv2.imwrite(augmented_mask_output_path, cv2.cvtColor(transformed_mask, cv2.COLOR_RGB2BGR))
 
 
                 progress_bar.update(1)
