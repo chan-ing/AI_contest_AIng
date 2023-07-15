@@ -1,5 +1,5 @@
 # 마스크 데이터가 이미지일때 데이터를 로드하는 클래스.
-# 해당 파일을 import 하는 파일에서는 transform이나 rle_decode가 다르게 정의되어 있지 않은지 한번씩 확인 부탁드립니다.
+# 해당 파일을 import 하는 파일에서는 transform이 다르게 정의되어 있지 않은지 한번씩 확인 부탁드립니다.
 # dataloader 하는 방법 등은 아래에 작성해두었습니다.
 # 이후 학습 및 테스트 코드는 동일합니다.
 
@@ -10,17 +10,6 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-
-
-def rle_decode(mask_rle, shape):
-    s = mask_rle.split()
-    starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
-    starts -= 1
-    ends = starts + lengths
-    img = np.zeros(shape[0]*shape[1], dtype=np.uint8)
-    for lo, hi in zip(starts, ends):
-        img[lo:hi] = 1
-    return img.reshape(shape)
 
 transform = A.Compose(
         [
