@@ -27,6 +27,7 @@ class Augmentation:
         total_files = len(image_files)
         progress_bar = tqdm(total=total_files * 3, desc="Augmenting Images", unit="image")
 
+
         for image_file, mask_file in zip(image_files, mask_files):
             image_name = os.path.basename(image_file)
             mask_name = os.path.basename(mask_file)
@@ -49,6 +50,7 @@ class Augmentation:
             os.rename(mask_path, existing_mask_output_path)
 
             for i in range(1, 4):
+
                 transformed = self.transform(image=image, mask=mask)
                 transformed_image = transformed['image']
                 transformed_mask = transformed['mask']
@@ -62,6 +64,7 @@ class Augmentation:
 
                 cv2.imwrite(augmented_image_output_path, cv2.cvtColor(transformed_image, cv2.COLOR_RGB2BGR))
                 cv2.imwrite(augmented_mask_output_path, cv2.cvtColor(transformed_mask, cv2.COLOR_RGB2BGR))
+
 
                 progress_bar.update(1)
 
