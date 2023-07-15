@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from PIL import Image
 
+
 class MaskImageCreator:
     def __init__(self, filename):
         self.filename = filename
@@ -18,8 +19,9 @@ class MaskImageCreator:
         mask_image = Image.new('P', (1024, 1024))
         mask_image.putdata(mask)
         mask_image.putpalette([0, 0, 0, 255, 255, 0])
-        return mask_image\
-    
+        return mask_image
+
+
     def create_mask_image(self):
         data = pd.read_csv(self.filename)
         mask_rle_column = data['mask_rle']
