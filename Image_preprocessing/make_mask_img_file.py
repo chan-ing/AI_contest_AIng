@@ -21,6 +21,7 @@ class MaskImageCreator:
         mask_image.putpalette([0, 0, 0, 255, 255, 0])
         return mask_image
 
+
     def create_mask_image(self):
         data = pd.read_csv(self.filename)
         mask_rle_column = data['mask_rle']
