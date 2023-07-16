@@ -339,11 +339,9 @@ class HardVotingEnsemble(nn.Module):
             masks = (masks > 0.35).astype(np.uint8)  # Threshold = 0.35
             predictions.append(masks)
 
-        predictions = [torch.from_numpy(mask) for mask in predictions]
-        predictions = torch.stack(predictions, dim=0)
-        aggregated_predictions = torch.mode(predictions, dim=0).values
-        aggregated_predictions = aggregated_predictions.numpy()
-        return aggregated_predictions
+        predictions = np.stack(predictions, axis=0)
+        mode_values = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=predictions)
+        return mode_values
 
 class softVotingEnsemble(nn.Module):
     def __init__(self):
@@ -365,11 +363,9 @@ class softVotingEnsemble(nn.Module):
             masks = (masks > 0.35).astype(np.uint8)  # Threshold = 0.35
             predictions.append(masks)
 
-        predictions = [torch.from_numpy(mask) for mask in predictions]
-        predictions = torch.stack(predictions, dim=0)
-        mean_value = torch.mean(predictions, dim=0)
+        predictions = np.stack(predictions, axis=0)
+        mean_value = np.mean(predictions, axis=0)
         mean_value = (mean_value >= 0.5).astype(np.uint8)
-        mean_value = mean_value.numpy()
         return mean_value
 
 if __name__ == '__main__':
@@ -384,9 +380,9 @@ if __name__ == '__main__':
     )
 
     dataset = SatelliteDataset(csv_file='train.csv', transform=transform)
-    #subset_dataset = torch.utils.data.Subset(dataset, range(10))
-    #dataloader = DataLoader(subset_dataset, batch_size=8, shuffle=True, num_workers=8)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8)
+    subset_dataset = torch.utils.data.Subset(dataset, range(10))
+    dataloader = DataLoader(subset_dataset, batch_size=8, shuffle=True, num_workers=8)
+    #dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8)
 
 
     # model 초기화
@@ -404,7 +400,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
         # training loop
-        for epoch in range(10):  # 10 에폭 동안 학습합니다.
+        for epoch in range(1):  # 10 에폭 동안 학습합니다.
             model.train()
             epoch_loss = 0
             for images, masks in tqdm(dataloader):
