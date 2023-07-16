@@ -49,19 +49,18 @@ class ResNetBackbone(nn.Module):
     def __init__(self):
         super(ResNetBackbone, self).__init__()
 
-        # ResNet-50을 백본으로 사용
         resnet = models.resnet50(weights='ResNet50_Weights.DEFAULT')
-
-        # ResNet의 마지막 두 레이어를 제거하여 feature map을 얻습니다.
+        
         self.features = nn.Sequential(*list(resnet.children())[:-2])
-
-        self.upsample = nn.Upsample(size=(224, 224), mode='bilinear', align_corners=True)
-        self.res_down1 = double_conv(2048,64)
+        self.upsample = nn.Upsample(size=(14, 14), mode='bilinear', align_corners=True)
+        self.res_down1 = double_conv(2048,1024)
+        self.res_down2 = double_conv(1024,512)
 
     def forward(self, x):
         features = self.features(x)
         features = self.upsample(features)
         features = self.res_down1(features)
+        features = self.res_down2(features)
         return features
 
 class UNet(nn.Module):
@@ -69,7 +68,7 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         self.backbone = ResNetBackbone()
 
-        self.dconv_down1 = double_conv(64, 64)
+        self.dconv_down1 = double_conv(128, 64)
         self.dconv_down2 = double_conv(64, 128)
         self.dconv_down3 = double_conv(128, 256)
         self.dconv_down4 = double_conv(256, 512)
@@ -77,43 +76,29 @@ class UNet(nn.Module):
         self.maxpool = nn.MaxPool2d(2)
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
-        self.dconv_up3 = double_conv(256 + 512, 256)
-        self.dconv_up2 = double_conv(128 + 256, 128)
-        self.dconv_up1 = double_conv(128 + 64, 64)
+        self.dconv_up1 = double_conv(512, 256)
+        self.dconv_up2 = double_conv(256, 128)
+        self.dconv_up3 = double_conv(128, 64)
+        
 
         self.conv_last = nn.Conv2d(64, 1, 1)
 
     def forward(self, x):
-        x = self.backbone(x)   # 3 -> 64
+        x = self.backbone(x)   # 512,14,14
+        x = self.upsample(x)  # 512,28,28
 
-        conv1 = self.dconv_down1(x)   # 64 -> 64
-        x = self.maxpool(conv1)
+        conv1 =self.dconv_up1(x) #256,14,14
+        x = self.upsample(conv1)  # 256,56,56
 
-        conv2 = self.dconv_down2(x)  # 64 -> 128
-        x = self.maxpool(conv2)
+        conv2 = self.dconv_up2(x)  # 128  
+        x = self.upsample(conv2)  # 128,112,112
 
-        conv3 = self.dconv_down3(x)  # 128 -> 256
-        x = self.maxpool(conv3)
-
-        x = self.dconv_down4(x)  # 256 -> 512
-
-        x = self.upsample(x)
-        x = torch.cat([x, conv3], dim=1)
-
-        x = self.dconv_up3(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv2], dim=1)
-
-        x = self.dconv_up2(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv1], dim=1)
-
-        x = self.dconv_up1(x)
+        conv3 = self.dconv_up3(x)  # 64,56,56
+        x = self.upsample(conv3) # 64,224,224
 
         out = self.conv_last(x)
 
         return out
-
 
 def rle_decode(mask_rle, shape):
     s = mask_rle.split()
