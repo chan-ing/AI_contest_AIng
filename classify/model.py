@@ -22,15 +22,18 @@ class ResNetBackbone(nn.Module):
     def __init__(self):
         super(ResNetBackbone, self).__init__()
 
-        resnet = models.resnet50(pretrained=True)
+        resnet = models.resnet50(weights='ResNet50_Weights.DEFAULT')
+        
         self.features = nn.Sequential(*list(resnet.children())[:-2])
-        self.upsample = nn.Upsample(size=(224, 224), mode='bilinear', align_corners=True)
-        self.res_down1 = double_conv(2048, 64)
+        self.upsample = nn.Upsample(size=(14, 14), mode='bilinear', align_corners=True)
+        self.res_down1 = double_conv(2048,1024)
+        self.res_down2 = double_conv(1024,512)
 
     def forward(self, x):
         features = self.features(x)
         features = self.upsample(features)
         features = self.res_down1(features)
+        features = self.res_down2(features)
         return features
 
 class UNet(nn.Module):
