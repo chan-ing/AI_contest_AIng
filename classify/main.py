@@ -7,8 +7,8 @@ import pandas as pd
 import numpy as np
 
 from preprocess import *
-from model import UNet, eff_UNet, EnsembleModel, UNetpp
-from loss import FocalLoss, LovaszLoss
+from model import *
+from loss import *
 
 if __name__ == '__main__':
 
@@ -32,30 +32,30 @@ if __name__ == '__main__':
     model2 = eff_UNet().to(device)
     model3 = UNetpp().to(device)
 
-    ensemble_model = UNet().to(device)
-    eff_unet_model = eff_UNet().to(device)
+    models = [model1,model2,model3]
 
     criterion = FocalLoss(alpha=0.5, gamma=2)
     #criterion = LovaszLoss()
-    optimizer = torch.optim.Adam(ensemble_model.parameters(), lr=0.001)
+    for model in models:
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    for epoch in range(5):
-        ensemble_model.train()
-        epoch_loss = 0
-        for images, masks in tqdm(dataloader):
-            images = images.float().to(device)
-            masks = masks.float().to(device)
+        for epoch in range(5):
+            model.train()
+            epoch_loss = 0
+            for images, masks in tqdm(dataloader):
+                images = images.float().to(device)
+                masks = masks.float().to(device)
 
-            optimizer.zero_grad()
-            outputs = ensemble_model(images)
-            loss = criterion(outputs, masks.unsqueeze(1))
-            #loss = criterion(logits, targets)
-            loss.backward()
-            optimizer.step()
+                optimizer.zero_grad()
+                outputs = model(images)
+                loss = criterion(outputs, masks.unsqueeze(1))
+                #loss = criterion(logits, targets)
+                loss.backward()
+                optimizer.step()
 
-            epoch_loss += loss.item()
+                epoch_loss += loss.item()
 
-        print(f'Epoch {epoch+1}, Loss: {epoch_loss/len(dataloader)}')
+            print(f'Epoch {epoch+1}, Loss: {epoch_loss/len(dataloader)}')
 
     img_folder_path = "./test_img"
     
@@ -63,16 +63,12 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=8)
 
     with torch.no_grad():
-        EnsembleModel.eval()
-
         result = []
+        Ensemble = HardVotingEnsemble().to(device)
         for images in tqdm(test_dataloader):
             images = images.float().to(device)
-
-            outputs = ensemble_model(images)
-            masks = torch.sigmoid(outputs).cpu().numpy()
-            masks = np.squeeze(masks, axis=1)
-            masks = (masks > 0.35).astype(np.uint8)
+            Ensemble.train()
+            masks = Ensemble(images)
 
             for i in range(len(images)):
                 mask_rle = rle_encode(masks[i])

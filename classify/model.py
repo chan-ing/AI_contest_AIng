@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 from torchvision import models
 from efficientnet_pytorch import EfficientNet
+import numpy as np
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def double_conv(in_channels, out_channels):
     return nn.Sequential(
@@ -210,16 +214,53 @@ class UNetpp(nn.Module):
 
         return output
 
-class EnsembleModel(nn.Module):
-    def __init__(self, model1, model2, model3):
-        super(EnsembleModel, self).__init__()
-        self.model1 = model1
-        self.model2 = model2
-        self.model3 = model3
+class HardVotingEnsemble(nn.Module):
+    def __init__(self):
+        super(HardVotingEnsemble, self).__init__()
+        self.model1 = UNet().to(device)
+        self.model2 = eff_UNet().to(device)
+        self.model3 = UNetpp().to(device)
+        self.models = [self.model1,self.model2,self.model3]
 
     def forward(self, x):
-        output1 = self.model1(x)
-        output2 = self.model2(x)
-        output3 = self.model3(x)
-        ensemble_output = (output1 + output2 + output3) / 3
-        return ensemble_output
+        predictions = []
+        
+        for model in self.models:
+            model.eval()
+            output = model(x)
+            masks = torch.sigmoid(output).cpu().numpy()
+            masks = np.squeeze(masks, axis=1)
+            masks = (masks > 0.35).astype(np.uint8)  # Threshold = 0.35
+            predictions.append(masks)
+
+        predictions = [torch.from_numpy(mask) for mask in predictions]
+        predictions = torch.stack(predictions, dim=0)
+        aggregated_predictions = torch.mode(predictions, dim=0).values
+        aggregated_predictions = aggregated_predictions.numpy()
+        return aggregated_predictions
+
+class softVotingEnsemble(nn.Module):
+    def __init__(self):
+        super(softVotingEnsemble, self).__init__()
+        self.model1 = UNet().to(device)
+        self.model2 = eff_UNet().to(device)
+        self.model3 = UNetpp().to(device)
+        self.models = [self.model1,self.model2,self.model3]
+        
+    def forward(self, x):
+        predictions = []
+        
+        for model in self.models:
+            model.eval()
+            output = model(x)
+            masks = torch.sigmoid(output).cpu().numpy()
+            masks = np.squeeze(masks, axis=1)
+            masks = (masks > 0.35).astype(np.uint8)  # Threshold = 0.35
+            predictions.append(masks)
+
+        predictions = [torch.from_numpy(mask) for mask in predictions]
+        predictions = torch.stack(predictions, dim=0)
+        mean_value = torch.mean(predictions, dim=0)
+        mean_value = (mean_value >= 0.5).astype(np.uint8)
+        mean_value = mean_value.numpy()
+        return mean_value
