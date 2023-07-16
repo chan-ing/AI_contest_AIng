@@ -384,9 +384,9 @@ if __name__ == '__main__':
     )
 
     dataset = SatelliteDataset(csv_file='train.csv', transform=transform)
-    subset_dataset = torch.utils.data.Subset(dataset, range(10))
-    dataloader = DataLoader(subset_dataset, batch_size=8, shuffle=True, num_workers=8)
-    #dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8)
+    #subset_dataset = torch.utils.data.Subset(dataset, range(10))
+    #dataloader = DataLoader(subset_dataset, batch_size=8, shuffle=True, num_workers=8)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8)
 
 
     # model 초기화
@@ -404,7 +404,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
         # training loop
-        for epoch in range(1):  # 10 에폭 동안 학습합니다.
+        for epoch in range(10):  # 10 에폭 동안 학습합니다.
             model.train()
             epoch_loss = 0
             for images, masks in tqdm(dataloader):
