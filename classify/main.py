@@ -31,7 +31,6 @@ if __name__ == '__main__':
     model1 = UNet().to(device)
     model2 = eff_UNet().to(device)
     model3 = UNetpp().to(device)
-
     models = [model1,model2,model3]
 
     criterion = FocalLoss(alpha=0.5, gamma=2)
