@@ -66,14 +66,6 @@ def rle_encode(mask):
     runs[1::2] -= runs[::2]
     return ' '.join(str(x) for x in runs)
 
-# def double_conv(in_channels, out_channels):
-#     return nn.Sequential(
-#         nn.Conv2d(in_channels, out_channels, 3, padding=1),
-#         nn.ReLU(inplace=True),
-#         nn.Conv2d(out_channels, out_channels, 3, padding=1),
-#         nn.ReLU(inplace=True)
-#     )
-
 def double_conv(in_channels, out_channels):
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, 3, padding=1),
@@ -84,6 +76,8 @@ def double_conv(in_channels, out_channels):
         nn.BatchNorm2d(out_channels),
         nn.ReLU(inplace=True)
     )
+
+# ResNet_Unet -----------------------------------------------
 
 class ResNetBackbone(nn.Module):
     def __init__(self):
@@ -107,11 +101,6 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         self.backbone = ResNetBackbone()
 
-        self.dconv_down1 = double_conv(128, 64)
-        self.dconv_down2 = double_conv(64, 128)
-        self.dconv_down3 = double_conv(128, 256)
-        self.dconv_down4 = double_conv(256, 512)
-
         self.maxpool = nn.MaxPool2d(2)
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
@@ -119,7 +108,6 @@ class UNet(nn.Module):
         self.dconv_up2 = double_conv(256, 128)
         self.dconv_up3 = double_conv(128, 64)
         
-
         self.conv_last = nn.Conv2d(64, 1, 1)
 
     def forward(self, x):
@@ -138,6 +126,8 @@ class UNet(nn.Module):
         out = self.conv_last(x)
 
         return out
+
+# Efficient_Unet ------------------------------------------------------------------------------------
 
 class EfficientNetBackbone(nn.Module):
     def __init__(self, pretrained=True):
@@ -184,53 +174,8 @@ class eff_UNet(nn.Module):
         out = self.conv_last(x)
 
         return out
+# UNet++ ------------------------------------------------------------------------------------------------------
 
-class basic_UNet(nn.Module):
-    def __init__(self):
-        super(basic_UNet, self).__init__()
-        self.dconv_down1 = double_conv(3, 64)
-        self.dconv_down2 = double_conv(64, 128)
-        self.dconv_down3 = double_conv(128, 256)
-        self.dconv_down4 = double_conv(256, 512)
-
-        self.maxpool = nn.MaxPool2d(2)
-        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-
-        self.dconv_up3 = double_conv(256 + 512, 256)
-        self.dconv_up2 = double_conv(128 + 256, 128)
-        self.dconv_up1 = double_conv(128 + 64, 64)
-
-        self.conv_last = nn.Conv2d(64, 1, 1)
-
-    def forward(self, x):
-        conv1 = self.dconv_down1(x)
-        x = self.maxpool(conv1)
-
-        conv2 = self.dconv_down2(x)
-        x = self.maxpool(conv2)
-
-        conv3 = self.dconv_down3(x)
-        x = self.maxpool(conv3)
-
-        x = self.dconv_down4(x)
-
-        x = self.upsample(x)
-        x = torch.cat([x, conv3], dim=1)
-
-        x = self.dconv_up3(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv2], dim=1)
-
-        x = self.dconv_up2(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv1], dim=1)
-
-        x = self.dconv_up1(x)
-
-        out = self.conv_last(x)
-
-        return out
-    
 class UNetpp(nn.Module):
     def __init__(self):
         super(UNetpp, self).__init__()
@@ -319,55 +264,6 @@ class UNetpp(nn.Module):
 
         return output
 
-class HardVotingEnsemble(nn.Module):
-    def __init__(self):
-        super(HardVotingEnsemble, self).__init__()
-        self.model1 = UNet().to(device)
-        self.model2 = basic_UNet().to(device)
-        self.model3 = eff_UNet().to(device)
-        self.model4 = UNetpp().to(device)
-        self.models = [self.model1,self.model2,self.model3,self.model4]
-
-    def forward(self, x):
-        predictions = []
-        
-        for model in self.models:
-            model.eval()
-            output = model(x)
-            masks = torch.sigmoid(output).cpu().numpy()
-            masks = np.squeeze(masks, axis=1)
-            masks = (masks > 0.35).astype(np.uint8)  # Threshold = 0.35
-            predictions.append(masks)
-
-        predictions = np.stack(predictions, axis=0)
-        mode_values = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=predictions)
-        return mode_values
-
-class softVotingEnsemble(nn.Module):
-    def __init__(self):
-        super(softVotingEnsemble, self).__init__()
-        self.model1 = UNet().to(device)
-        self.model2 = basic_UNet().to(device)
-        self.model3 = eff_UNet().to(device)
-        self.model4 = UNetpp().to(device)
-        self.models = [model1,model2,model3,model4]
-        
-    def forward(self, x):
-        predictions = []
-        
-        for model in self.models:
-            model.eval()
-            output = model(x)
-            masks = torch.sigmoid(output).cpu().numpy()
-            masks = np.squeeze(masks, axis=1)
-            masks = (masks > 0.35).astype(np.uint8)  # Threshold = 0.35
-            predictions.append(masks)
-
-        predictions = np.stack(predictions, axis=0)
-        mean_value = np.mean(predictions, axis=0)
-        mean_value = (mean_value >= 0.5).astype(np.uint8)
-        return mean_value
-
 if __name__ == '__main__':
     torch.multiprocessing.freeze_support()
 
@@ -380,18 +276,15 @@ if __name__ == '__main__':
     )
 
     dataset = SatelliteDataset(csv_file='train.csv', transform=transform)
-    #subset_dataset = torch.utils.data.Subset(dataset, range(10))
-    #dataloader = DataLoader(subset_dataset, batch_size=8, shuffle=True, num_workers=8)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8)
-
-
+    subset_dataset = torch.utils.data.Subset(dataset, range(10))
+    dataloader = DataLoader(subset_dataset, batch_size=8, shuffle=True, num_workers=8)
+    
     # model 초기화
     model1 = UNet().to(device)
-    model2 = basic_UNet().to(device)
-    model3 = eff_UNet().to(device)
-    model4 = UNetpp().to(device)
+    model2 = eff_UNet().to(device)
+    model3 = UNetpp().to(device)
 
-    models = [model1,model2,model3,model4]
+    models = [model1,model2,model3]
 
     # loss function과 optimizer 정의
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -400,7 +293,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
         # training loop
-        for epoch in range(10):  # 10 에폭 동안 학습합니다.
+        for epoch in range(1):  # 10 에폭 동안 학습합니다.
             model.train()
             epoch_loss = 0
             for images, masks in tqdm(dataloader):
@@ -421,15 +314,24 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=8)
  
     with torch.no_grad():
-        result = []
-        Ensemble = HardVotingEnsemble().to(device)
+        result =[]
         for images in tqdm(test_dataloader):
             images = images.float().to(device)
-            Ensemble.train()
-            masks = Ensemble(images)
+
+            model_predic =[]
+            for model in models:
+                model.eval()
+                outputs = model(images)
+                masks = torch.sigmoid(outputs).cpu().numpy()
+                masks = np.squeeze(masks, axis=1)
+                masks = (masks > 0.5).astype(np.uint8)  # Threshold = 0.35
+                model_predic.append(masks)
+            
+            predictions = np.stack(model_predic, axis=0)
+            mode_values = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=predictions)
 
             for i in range(len(images)):
-                mask_rle = rle_encode(masks[i])
+                mask_rle = rle_encode(mode_values[i])
                 if mask_rle == '':  # 예측된 건물 픽셀이 아예 없는 경우 -1
                     result.append(-1)
                 else:
