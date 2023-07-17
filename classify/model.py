@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision import models
+from torchvision.models import resnet50
 from efficientnet_pytorch import EfficientNet
 import numpy as np
 
@@ -24,7 +25,7 @@ class ResNetBackbone(nn.Module):
     def __init__(self):
         super(ResNetBackbone, self).__init__()
 
-        resnet = models.resnet50(weights='ResNet50_Weights.DEFAULT')
+        resnet = resnet50(weights='ResNet50_Weights.DEFAULT')
         
         self.features = nn.Sequential(*list(resnet.children())[:-2])
         self.upsample = nn.Upsample(size=(14, 14), mode='bilinear', align_corners=True)
