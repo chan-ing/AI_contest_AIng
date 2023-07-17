@@ -18,6 +18,9 @@ def double_conv(in_channels, out_channels):
         nn.ReLU(inplace=True)
     )
 
+
+
+# 백본-----------------------------------------------------------------------------------------------------------------------------
 class ResNetBackbone(nn.Module):
     def __init__(self):
         super(ResNetBackbone, self).__init__()
@@ -35,10 +38,25 @@ class ResNetBackbone(nn.Module):
         features = self.res_down1(features)
         features = self.res_down2(features)
         return features
+    
+class EfficientNetBackbone(nn.Module):
+    def __init__(self, pretrained=True):
+        super(EfficientNetBackbone, self).__init__()
+        self.model = EfficientNet.from_pretrained('efficientnet-b0') if pretrained else EfficientNet.from_name('efficientnet-b0')
 
-class UNet(nn.Module):
+    def forward(self, x):
+        features = self.model.extract_features(x)
+        return features
+
+#--------------------------------------------------------------------------------------------------------
+
+#MODEL-----------------------------------
+
+# 백본 ResNet
+# 모델 UNet
+class ResNet_UNet(nn.Module): 
     def __init__(self):
-        super(UNet, self).__init__()
+        super(ResNet_UNet, self).__init__()
         self.backbone = ResNetBackbone()
 
         self.dconv_down1 = double_conv(64, 64)
@@ -85,15 +103,10 @@ class UNet(nn.Module):
         out = self.conv_last(x)
 
         return out
-class EfficientNetBackbone(nn.Module):
-    def __init__(self, pretrained=True):
-        super(EfficientNetBackbone, self).__init__()
-        self.model = EfficientNet.from_pretrained('efficientnet-b0') if pretrained else EfficientNet.from_name('efficientnet-b0')
 
-    def forward(self, x):
-        features = self.model.extract_features(x)
-        return features
 
+# 백본 Efficient 
+# 모델 UNet
 class eff_UNet(nn.Module):
     def __init__(self):
         super(eff_UNet, self).__init__()
@@ -129,6 +142,9 @@ class eff_UNet(nn.Module):
         out = self.conv_last(x)
 
         return out
+    
+
+# 모델 UNetPP    
 class UNetpp(nn.Module):
     def __init__(self):
         super(UNetpp, self).__init__()
@@ -217,10 +233,15 @@ class UNetpp(nn.Module):
 
         return output
 
+#----------------------------------------------------------------------------------------------------------------
+
+# 앙상블 -----------------------------------------------------
+
+#나온 1,0중 빈도수가 높은걸 채택
 class HardVotingEnsemble(nn.Module):
     def __init__(self):
         super(HardVotingEnsemble, self).__init__()
-        self.model1 = UNet().to(device)
+        self.model1 = ResNet_UNet().to(device)
         self.model2 = eff_UNet().to(device)
         self.model3 = UNetpp().to(device)
         self.models = [self.model1,self.model2,self.model3]
@@ -242,10 +263,12 @@ class HardVotingEnsemble(nn.Module):
         aggregated_predictions = aggregated_predictions.numpy()
         return aggregated_predictions
 
+
+# 평균을 구해서 1,0중 가까운 걸 채택
 class softVotingEnsemble(nn.Module):
     def __init__(self):
         super(softVotingEnsemble, self).__init__()
-        self.model1 = UNet().to(device)
+        self.model1 = ResNet_UNet().to(device)
         self.model2 = eff_UNet().to(device)
         self.model3 = UNetpp().to(device)
         self.models = [self.model1,self.model2,self.model3]
