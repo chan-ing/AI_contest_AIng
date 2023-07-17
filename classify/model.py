@@ -19,7 +19,6 @@ def double_conv(in_channels, out_channels):
     )
 
 
-
 # 백본-----------------------------------------------------------------------------------------------------------------------------
 class ResNetBackbone(nn.Module):
     def __init__(self):
@@ -54,56 +53,37 @@ class EfficientNetBackbone(nn.Module):
 
 # 백본 ResNet
 # 모델 UNet
-class ResNet_UNet(nn.Module): 
+
+class ResNet_UNet(nn.Module):
     def __init__(self):
         super(ResNet_UNet, self).__init__()
         self.backbone = ResNetBackbone()
 
-        self.dconv_down1 = double_conv(64, 64)
-        self.dconv_down2 = double_conv(64, 128)
-        self.dconv_down3 = double_conv(128, 256)
-        self.dconv_down4 = double_conv(256, 512)
-
         self.maxpool = nn.MaxPool2d(2)
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
-        self.dconv_up3 = double_conv(256 + 512, 256)
-        self.dconv_up2 = double_conv(128 + 256, 128)
-        self.dconv_up1 = double_conv(128 + 64, 64)
-
+        self.dconv_up1 = double_conv(512, 256)
+        self.dconv_up2 = double_conv(256, 128)
+        self.dconv_up3 = double_conv(128, 64)
+        
         self.conv_last = nn.Conv2d(64, 1, 1)
 
     def forward(self, x):
-        x = self.backbone(x)   # 3 -> 64
+        x = self.backbone(x)   # 512,14,14
+        x = self.upsample(x)  # 512,28,28
 
-        conv1 = self.dconv_down1(x)   # 64 -> 64
-        x = self.maxpool(conv1)
+        conv1 =self.dconv_up1(x) #256,14,14
+        x = self.upsample(conv1)  # 256,56,56
 
-        conv2 = self.dconv_down2(x)  # 64 -> 128
-        x = self.maxpool(conv2)
+        conv2 = self.dconv_up2(x)  # 128  
+        x = self.upsample(conv2)  # 128,112,112
 
-        conv3 = self.dconv_down3(x)  # 128 -> 256
-        x = self.maxpool(conv3)
-
-        x = self.dconv_down4(x)  # 256 -> 512
-
-        x = self.upsample(x)
-        x = torch.cat([x, conv3], dim=1)
-
-        x = self.dconv_up3(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv2], dim=1)
-
-        x = self.dconv_up2(x)
-        x = self.upsample(x)
-        x = torch.cat([x, conv1], dim=1)
-
-        x = self.dconv_up1(x)
+        conv3 = self.dconv_up3(x)  # 64,56,56
+        x = self.upsample(conv3) # 64,224,224
 
         out = self.conv_last(x)
 
         return out
-
 
 # 백본 Efficient 
 # 모델 UNet
@@ -142,7 +122,6 @@ class eff_UNet(nn.Module):
         out = self.conv_last(x)
 
         return out
-    
 
 # 모델 UNetPP    
 class UNetpp(nn.Module):
