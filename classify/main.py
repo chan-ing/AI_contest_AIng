@@ -28,7 +28,7 @@ if __name__ == '__main__':
     dataset = ImageDataset(transform=transform, img_folder_path=img_folder_path, mask_folder_path=mask_folder_path, inder=False)
     dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8)
     
-    model1 = UNet().to(device)
+    model1 = ResNet_UNet().to(device)
     model2 = eff_UNet().to(device)
     model3 = UNetpp().to(device)
     models = [model1,model2,model3]
