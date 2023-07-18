@@ -71,7 +71,6 @@ class CompoundLoss(nn.Module):
         compound_loss = (self.alpha * bce_loss) + ((1 - self.alpha) * focal_loss) + (self.lovasz_weight * lovasz_loss)
         return compound_loss
 
-
 #------------------아래와 같이 main에서 사용----------------------#
 
 # 복합 손실 함수와 optimizer 정의
@@ -95,3 +94,19 @@ class CompoundLoss(nn.Module):
 #         epoch_loss += loss.item()
 
 #     print(f'Epoch {epoch+1}, Loss: {epoch_loss/len(dataloader)}')
+
+# Dice loss 클래스 구현
+class DiceLoss(nn.Module):
+    def __init__(self, smooth=1e-7):
+        super(DiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, inputs, targets):
+        inputs = torch.sigmoid(inputs)
+        intersection = torch.sum(inputs * targets)
+        union = torch.sum(inputs) + torch.sum(targets)
+        dice_score = (2.0 * intersection + self.smooth) / (union + self.smooth)
+        loss = 1.0 - dice_score
+        return loss
+    
+#loss = criterion(outputs, masks)
