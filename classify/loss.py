@@ -18,40 +18,109 @@ class FocalLoss(nn.Module):
         return torch.mean(focal_loss)
 
 # Lovasz loss 클래스 구현
+# class LovaszLoss(nn.Module):
+#     def __init__(self):
+#         super(LovaszLoss, self).__init__()
+
+#     def lovasz_grad(self, gt_sorted):
+#         gts = gt_sorted.sum()
+#         intersection = gts - gt_sorted.float().cumsum(dim=0)
+#         union = gts + (1 - gt_sorted).float().cumsum(dim=0)
+#         jaccard = 1.0 - intersection / union
+#         jaccard[1:] = jaccard[1:] - jaccard[:-1]
+#         return jaccard
+
+#     def lovasz_hinge_flat(self, logits, targets):
+#         targets = targets.view(-1)
+#         logits = logits.view(-1)
+#         signs = 2.0 * targets - 1.0
+#         errors = 1.0 - logits * signs
+#         errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
+#         perm = perm.data
+#         gt_sorted = targets[perm]
+#         grad = self.lovasz_grad(gt_sorted)
+#         loss = torch.dot(torch.nn.functional.relu(errors_sorted), grad)
+#         return loss
+
+#     def forward(self, inputs, targets):
+#         losses = []
+#         num_classes = inputs.size(1)
+#         for c in range(num_classes):
+#             target_c = (targets == c).float()
+#             input_c = inputs[:, c, ...]
+#             loss_c = self.lovasz_hinge_flat(input_c, target_c)
+#             losses.append(loss_c)
+#         loss = torch.mean(torch.stack(losses))
+#         return loss
+
+
+# Lovasz loss 클래스 수정 구현
+def lovasz_grad(gt_sorted):
+    p = len(gt_sorted)
+    gts = gt_sorted.sum()
+    intersection = gts - gt_sorted.float().cumsum(0)
+    union = gts + (1 - gt_sorted).float().cumsum(0)
+    jaccard = 1 - intersection / union
+    if p > 1:  # cover 1-pixel case
+        jaccard[1:p] = jaccard[1:p] - jaccard[0:-1]
+    return jaccard
+
+def hinge(pred, label):
+    signs = 2 * label - 1
+    errors = 1 - pred * signs
+    return errors
+
+def lovasz_hinge_flat(logits, labels, ignore_index):
+    logits = logits.contiguous().view(-1)
+    labels = labels.contiguous().view(-1)
+    if ignore_index is not None:
+        mask = labels != ignore_index
+        logits = logits[mask]
+        labels = labels[mask]
+    errors = hinge(logits, labels)
+    errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
+    perm = perm.data
+    gt_sorted = labels[perm]
+    grad = lovasz_grad(gt_sorted)
+    loss = torch.dot(F.elu(errors_sorted) + 1, grad)
+    return loss
+
 class LovaszLoss(nn.Module):
+    def __init__(self, ignore_index=None):
+        super().__init__()
+        self.ignore_index = ignore_index
+
+    def forward(self, logits, labels):
+        return lovasz_hinge_flat(logits, labels, self.ignore_index)
+
+
+# CrossEntropy+Lovasz loss 함수
+
+class BceAndLovasz(nn.Module):
     def __init__(self):
-        super(LovaszLoss, self).__init__()
-
-    def lovasz_grad(self, gt_sorted):
-        gts = gt_sorted.sum()
-        intersection = gts - gt_sorted.float().cumsum(dim=0)
-        union = gts + (1 - gt_sorted).float().cumsum(dim=0)
-        jaccard = 1.0 - intersection / union
-        jaccard[1:] = jaccard[1:] - jaccard[:-1]
-        return jaccard
-
-    def lovasz_hinge_flat(self, logits, targets):
-        targets = targets.view(-1)
-        logits = logits.view(-1)
-        signs = 2.0 * targets - 1.0
-        errors = 1.0 - logits * signs
-        errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
-        perm = perm.data
-        gt_sorted = targets[perm]
-        grad = self.lovasz_grad(gt_sorted)
-        loss = torch.dot(torch.nn.functional.relu(errors_sorted), grad)
-        return loss
+        super(BceAndLovasz, self).__init__()
+        self.bce_weight = 0.8
+        self.class_bce_weights = torch.tensor([0.5]) 
+        self.lovasz_weight = 0.2
+        self.class_lovasz_weights = torch.tensor([1.0]) 
+        self.bce_loss = torch.nn.BCEWithLogitsLoss()
+        self.lovasz_loss = LovaszLoss()
 
     def forward(self, inputs, targets):
-        losses = []
-        num_classes = inputs.size(1)
-        for c in range(num_classes):
-            target_c = (targets == c).float()
-            input_c = inputs[:, c, ...]
-            loss_c = self.lovasz_hinge_flat(input_c, target_c)
-            losses.append(loss_c)
-        loss = torch.mean(torch.stack(losses))
-        return loss
+        # CrossEntropy Loss
+        bce_loss_value = self.bce_loss(inputs, targets)
+        bce_loss_value = torch.sum(bce_loss_value * self.class_bce_weights)
+
+        # Compute Lovasz Loss
+        lovasz_loss_value = self.lovasz_loss(inputs, targets)
+        lovasz_loss_value = torch.sum(lovasz_loss_value * self.class_lovasz_weights)
+
+        # Combine the losses with given weights
+        combined_loss = self.bce_weight * bce_loss_value + self.lovasz_weight * lovasz_loss_value
+
+        return combined_loss
+
+
 
 # 복합 손실 함수 정의
 class CompoundLoss(nn.Module):
