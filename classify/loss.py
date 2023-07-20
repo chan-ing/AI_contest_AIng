@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import torch.optim as optim
 from tqdm import tqdm
+import torch.nn.functional as F
 
 # Focal loss 구현
 class FocalLoss(nn.Module):
@@ -97,16 +98,42 @@ class CompoundLoss(nn.Module):
 
 # Dice loss 클래스 구현
 class DiceLoss(nn.Module):
-    def __init__(self, smooth=1e-7):
+    def __init__(self, weight=None, size_average=True):
         super(DiceLoss, self).__init__()
-        self.smooth = smooth
 
-    def forward(self, inputs, targets):
-        inputs = torch.sigmoid(inputs)
-        intersection = torch.sum(inputs * targets)
-        union = torch.sum(inputs) + torch.sum(targets)
-        dice_score = (2.0 * intersection + self.smooth) / (union + self.smooth)
-        loss = 1.0 - dice_score
-        return loss
+    def forward(self, inputs, targets, smooth=1):
+        
+        #comment out if your model contains a sigmoid or equivalent activation layer
+        inputs = F.sigmoid(inputs)       
+        
+        #flatten label and prediction tensors
+        inputs = inputs.view(-1)
+        targets = targets.view(-1)
+        
+        intersection = (inputs * targets).sum()                            
+        dice = (2.*intersection + smooth)/(inputs.sum() + targets.sum() + smooth)  
+        
+        return 1 - dice
     
 #loss = criterion(outputs, masks)
+
+class DiceBCELoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(DiceBCELoss, self).__init__()
+
+    def forward(self, inputs, targets, smooth=1):
+        
+        #comment out if your model contains a sigmoid or equivalent activation layer
+        inputs = F.sigmoid(inputs)       
+        
+        #flatten label and prediction tensors
+        inputs = inputs.view(-1)
+        targets = targets.view(-1)
+        
+        intersection = (inputs * targets).sum()                            
+        dice_loss = 1 - (2.*intersection + smooth)/(inputs.sum() + targets.sum() + smooth)  
+        BCE = F.binary_cross_entropy(inputs, targets, reduction='mean')
+        Dice_BCE = BCE + dice_loss
+        
+        return Dice_BCE
+#loss = criterion(outputs, masks.unsqueeze(1))
