@@ -73,7 +73,9 @@ class MakeValidationSet:
                 img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
                 mask_rle = rle_encode(img)
-
+                if mask_rle == '':
+                    mask_rle = -1 
+                    
                 df_list.append({'img_id': file_name.split('.')[0], 'mask_rle': mask_rle})
 
                 progress_bar.update(1)
@@ -85,10 +87,9 @@ class MakeValidationSet:
         df.to_csv(csv_file_path, index=False)
         
 # Usage example:
-'''
+
 train_img_folder = './patch_train_img'
 mask_img_folder = './patch_train_mask_img'
 Validset = MakeValidationSet(train_img_folder, mask_img_folder)
 Validset.make_validation()
 Validset.make_csv()
-'''
