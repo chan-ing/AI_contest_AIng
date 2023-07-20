@@ -59,53 +59,6 @@ class LovaszLoss(nn.Module):
     def forward(self, probas, targets):
         return self.lovasz_softmax(probas, targets)
 
-# CrossEntropy+Lovasz loss 함수
-class BceAndLovasz(nn.Module):
-    def __init__(self):
-        super(BceAndLovasz, self).__init__()
-        self.bce_weight = 0.8
-        self.class_bce_weights = torch.tensor([0.5]) 
-        self.lovasz_weight = 0.2
-        self.class_lovasz_weights = torch.tensor([1.0]) 
-        self.bce_loss = torch.nn.BCEWithLogitsLoss()
-        self.lovasz_loss = LovaszLoss()
-
-    def forward(self, inputs, targets):
-        # CrossEntropy Loss
-        bce_loss_value = self.bce_loss(inputs, targets)
-        bce_loss_value = torch.sum(bce_loss_value * self.class_bce_weights)
-
-        # Compute Lovasz Loss
-        lovasz_loss_value = self.lovasz_loss(inputs, targets)
-        lovasz_loss_value = torch.sum(lovasz_loss_value * self.class_lovasz_weights)
-
-        # Combine the losses with given weights
-        combined_loss = self.bce_weight * bce_loss_value + self.lovasz_weight * lovasz_loss_value
-
-        return combined_loss
-
-
-
-# 복합 손실 함수 정의
-class CompoundLoss(nn.Module): # criterion = CompoundLoss(alpha=0.5, gamma=2, lovasz_weight=0.5)
-    def __init__(self, alpha=0.5, gamma=2, lovasz_weight=0.5):
-        super(CompoundLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.lovasz_weight = lovasz_weight
-        self.bce_loss = nn.BCEWithLogitsLoss()
-        self.focal_loss = FocalLoss(gamma=self.gamma)
-        self.lovasz_loss = LovaszLoss()
-
-    def forward(self, inputs, targets):
-        bce_loss = self.bce_loss(inputs, targets)
-        focal_loss = self.focal_loss(inputs, targets)
-        lovasz_loss = self.lovasz_loss(inputs, targets)
-
-        compound_loss = (self.alpha * bce_loss) + ((1 - self.alpha) * focal_loss) + (self.lovasz_weight * lovasz_loss)
-        return compound_loss
-
-
 # Dice loss 클래스 구현
 class DiceLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
@@ -147,3 +100,55 @@ class DiceBCELoss(nn.Module):
         
         return Dice_BCE
 #loss = criterion(outputs, masks.unsqueeze(1))
+
+
+# CrossEntropy+Lovasz loss 함수
+class BceAndLovasz(nn.Module):
+    def __init__(self):
+        super(BceAndLovasz, self).__init__()
+        self.bce_weight = 0.8
+        self.class_bce_weights = torch.tensor([0.5]) 
+        self.lovasz_weight = 0.2
+        self.class_lovasz_weights = torch.tensor([1.0]) 
+        self.bce_loss = torch.nn.BCEWithLogitsLoss()
+        self.lovasz_loss = LovaszLoss()
+
+    def forward(self, inputs, targets):
+        # CrossEntropy Loss
+        bce_loss_value = self.bce_loss(inputs, targets)
+        bce_loss_value = torch.sum(bce_loss_value * self.class_bce_weights)
+
+        # Compute Lovasz Loss
+        lovasz_loss_value = self.lovasz_loss(inputs, targets)
+        lovasz_loss_value = torch.sum(lovasz_loss_value * self.class_lovasz_weights)
+
+        # Combine the losses with given weights
+        combined_loss = self.bce_weight * bce_loss_value + self.lovasz_weight * lovasz_loss_value
+
+        return combined_loss
+
+
+
+# 복합 손실 함수 정의
+class CombinedLoss(nn.Module):
+    def __init__(self, loss_functions, loss_weights):
+        super(CombinedLoss, self).__init__()
+        self.loss_functions = loss_functions
+        self.loss_weights = loss_weights
+
+    def forward(self, inputs, targets):
+        combined_loss = 0
+        for loss_fn, weight in zip(self.loss_functions, self.loss_weights):
+            loss_value = loss_fn(inputs, targets)
+            combined_loss += weight * loss_value
+
+        return combined_loss
+
+# loss_function1 = DiceLoss()
+# loss_function2 = LovaszLoss()
+
+# loss_functions = [loss_function1, loss_function2]
+# loss_weights = [0.8, 0.2]
+
+# combined_loss_function = CombinedLoss(loss_functions, loss_weights)
+# criterion = combined_loss_function
