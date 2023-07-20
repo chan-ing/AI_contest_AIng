@@ -18,84 +18,48 @@ class FocalLoss(nn.Module):
         return torch.mean(focal_loss)
 
 # Lovasz loss 클래스 구현
-# class LovaszLoss(nn.Module):
-#     def __init__(self):
-#         super(LovaszLoss, self).__init__()
-
-#     def lovasz_grad(self, gt_sorted):
-#         gts = gt_sorted.sum()
-#         intersection = gts - gt_sorted.float().cumsum(dim=0)
-#         union = gts + (1 - gt_sorted).float().cumsum(dim=0)
-#         jaccard = 1.0 - intersection / union
-#         jaccard[1:] = jaccard[1:] - jaccard[:-1]
-#         return jaccard
-
-#     def lovasz_hinge_flat(self, logits, targets):
-#         targets = targets.view(-1)
-#         logits = logits.view(-1)
-#         signs = 2.0 * targets - 1.0
-#         errors = 1.0 - logits * signs
-#         errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
-#         perm = perm.data
-#         gt_sorted = targets[perm]
-#         grad = self.lovasz_grad(gt_sorted)
-#         loss = torch.dot(torch.nn.functional.relu(errors_sorted), grad)
-#         return loss
-
-#     def forward(self, inputs, targets):
-#         losses = []
-#         num_classes = inputs.size(1)
-#         for c in range(num_classes):
-#             target_c = (targets == c).float()
-#             input_c = inputs[:, c, ...]
-#             loss_c = self.lovasz_hinge_flat(input_c, target_c)
-#             losses.append(loss_c)
-#         loss = torch.mean(torch.stack(losses))
-#         return loss
-
-
-# Lovasz loss 클래스 수정 구현
-def lovasz_grad(gt_sorted):
-    p = len(gt_sorted)
-    gts = gt_sorted.sum()
-    intersection = gts - gt_sorted.float().cumsum(0)
-    union = gts + (1 - gt_sorted).float().cumsum(0)
-    jaccard = 1 - intersection / union
-    if p > 1:  # cover 1-pixel case
-        jaccard[1:p] = jaccard[1:p] - jaccard[0:-1]
-    return jaccard
-
-def hinge(pred, label):
-    signs = 2 * label - 1
-    errors = 1 - pred * signs
-    return errors
-
-def lovasz_hinge_flat(logits, labels, ignore_index):
-    logits = logits.contiguous().view(-1)
-    labels = labels.contiguous().view(-1)
-    if ignore_index is not None:
-        mask = labels != ignore_index
-        logits = logits[mask]
-        labels = labels[mask]
-    errors = hinge(logits, labels)
-    errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
-    perm = perm.data
-    gt_sorted = labels[perm]
-    grad = lovasz_grad(gt_sorted)
-    loss = torch.dot(F.elu(errors_sorted) + 1, grad)
-    return loss
-
 class LovaszLoss(nn.Module):
-    def __init__(self, ignore_index=None):
-        super().__init__()
-        self.ignore_index = ignore_index
+    def __init__(self):
+        super(LovaszLoss, self).__init__()
 
-    def forward(self, logits, labels):
-        return lovasz_hinge_flat(logits, labels, self.ignore_index)
+    def lovasz_grad(self, gt_sorted):
+        p = len(gt_sorted)
+        gts = gt_sorted.sum()
+        intersection = gts - gt_sorted.cumsum(0)
+        union = gts + (1 - gt_sorted).cumsum(0)
+        jaccard = 1. - intersection / union
+        if p > 1:  # cover 1-pixel case
+            jaccard[1:p] = jaccard[1:p] - jaccard[0:-1]
+        return jaccard
 
+    def lovasz_hinge(self, logits, targets):
+        logits = logits.view(-1)
+        targets = targets.view(-1)
+        signs = 2. * targets.float() - 1.
+        errors = (1. - logits * signs)
+        errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
+        gt_sorted = targets[perm]
+        grad = self.lovasz_grad(gt_sorted)
+        loss = torch.dot(F.relu(errors_sorted), grad)
+        return loss
+
+    def lovasz_softmax(self, probas, targets):
+        C = probas.size(1)
+        losses = []
+        for c in range(C):
+            target_c = (targets == c).float()
+            if probas.size(1) == 1:
+                probas_c = probas[:, 0]
+            else:
+                probas_c = probas[:, c]
+            losses.append(self.lovasz_hinge(probas_c, target_c))
+        mean_loss = torch.mean(torch.stack(losses))
+        return mean_loss
+
+    def forward(self, probas, targets):
+        return self.lovasz_softmax(probas, targets)
 
 # CrossEntropy+Lovasz loss 함수
-
 class BceAndLovasz(nn.Module):
     def __init__(self):
         super(BceAndLovasz, self).__init__()
@@ -123,7 +87,7 @@ class BceAndLovasz(nn.Module):
 
 
 # 복합 손실 함수 정의
-class CompoundLoss(nn.Module):
+class CompoundLoss(nn.Module): # criterion = CompoundLoss(alpha=0.5, gamma=2, lovasz_weight=0.5)
     def __init__(self, alpha=0.5, gamma=2, lovasz_weight=0.5):
         super(CompoundLoss, self).__init__()
         self.alpha = alpha
@@ -141,29 +105,6 @@ class CompoundLoss(nn.Module):
         compound_loss = (self.alpha * bce_loss) + ((1 - self.alpha) * focal_loss) + (self.lovasz_weight * lovasz_loss)
         return compound_loss
 
-#------------------아래와 같이 main에서 사용----------------------#
-
-# 복합 손실 함수와 optimizer 정의
-# criterion = CompoundLoss(alpha=0.5, gamma=2, lovasz_weight=0.5)
-# optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-# # training loop
-# for epoch in range(10):  # 10 에폭 동안 학습합니다.
-#     model.train()
-#     epoch_loss = 0
-#     for images, masks in tqdm(dataloader):
-#         images = images.float().to(device)
-#         masks = masks.float().to(device)
-
-#         optimizer.zero_grad()
-#         outputs = model(images)
-#         loss = criterion(outputs, masks.unsqueeze(1))
-#         loss.backward()
-#         optimizer.step()
-
-#         epoch_loss += loss.item()
-
-#     print(f'Epoch {epoch+1}, Loss: {epoch_loss/len(dataloader)}')
 
 # Dice loss 클래스 구현
 class DiceLoss(nn.Module):
@@ -183,9 +124,9 @@ class DiceLoss(nn.Module):
         dice = (2.*intersection + smooth)/(inputs.sum() + targets.sum() + smooth)  
         
         return 1 - dice
-    
 #loss = criterion(outputs, masks)
 
+# DiceBCE loss 클래스 구현
 class DiceBCELoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
         super(DiceBCELoss, self).__init__()
