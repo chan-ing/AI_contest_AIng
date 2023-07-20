@@ -3,12 +3,12 @@ from crop_patchify_img import *
 from image_checker import *
 from cropped_image_rm_outlier import *
 from augmentation_class import *
-
+from validation_img import *
 #실행전 현재 디렉토리안에 test.csv, train.csv, test_img 폴더, train_img 폴더가 있어야 합니다.
 
 #결과 : train_mask_img 폴더 생성 후, mask image 저장됨.
-mask_creator = MaskImageCreator("./train.csv")
-mask_creator.create_mask_image()
+#mask_creator = MaskImageCreator("./train.csv")
+#mask_creator.create_mask_image()
 
 #cropping (896*896*3) --> pathchify (224*224*3)
 #결과 : 이미지 Crop & patchify 하여 224*224*3 shape의 이미지들이
@@ -40,3 +40,16 @@ augmenter = Augmentation(image_folder, mask_folder, image_folder, mask_folder)
 
 # 이미지 증강 수행
 augmenter.augment_images()
+
+#create  validation set
+#경로 설정
+train_img_folder = './patch_train_img'
+mask_img_folder = './patch_train_mask_img'
+
+#인스턴스 생성
+Validset = MakeValidationSet(train_img_folder, mask_img_folder)
+
+#validation set 생성
+Validset.make_validation()
+#정답 마스크 csv file 생성. (파일명 : truth.csv)
+Validset.make_csv()
