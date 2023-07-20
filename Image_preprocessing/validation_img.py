@@ -87,9 +87,10 @@ class MakeValidationSet:
         df.to_csv(csv_file_path, index=False)
         
 # Usage example:
-
+'''
 train_img_folder = './patch_train_img'
 mask_img_folder = './patch_train_mask_img'
 Validset = MakeValidationSet(train_img_folder, mask_img_folder)
 Validset.make_validation()
 Validset.make_csv()
+'''
