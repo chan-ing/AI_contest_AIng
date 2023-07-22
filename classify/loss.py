@@ -17,6 +17,41 @@ class FocalLoss(nn.Module):
         focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
         return torch.mean(focal_loss)
 
+#Lacasz loss 함수 (준썽)
+
+def lovasz_loss(logits, targets):
+    # 각각 이미지 손실함수 계산해줭
+    loss = torch.mean(torch.stack([lovasz_hinge_flat(log, tar) for log, tar in zip(logits, targets)]))
+    return loss
+
+def lovasz_hinge_flat(logits, targets):
+    logits = logits.view(-1)
+    targets = targets.view(-1)
+
+    signs = 2 * targets - 1
+    errors = 1.0 - logits * signs
+
+    errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
+    perm = perm.data
+    gt_sorted = targets[perm]
+
+    grad = lovasz_grad(gt_sorted)
+    loss = torch.dot(F.relu(errors_sorted), grad)
+
+    return loss
+
+def lovasz_grad(gt_sorted):
+    p = len(gt_sorted)
+    gts = gt_sorted.sum()
+    intersection = gts - gt_sorted.float().cumsum(0)
+    union = gts + (1 - gt_sorted).float().cumsum(0)
+    jaccard = 1.0 - intersection / union
+
+    if p > 1: 
+        jaccard[1:p] = jaccard[1:p] - jaccard[0:-1]
+
+    return jaccard
+
 # Lovasz loss 클래스 구현
 class LovaszLoss(nn.Module):
     def __init__(self):
@@ -101,20 +136,20 @@ class BceAndLovasz(nn.Module):
     def __init__(self):
         super(BceAndLovasz, self).__init__()
         self.bce_weight = 0.8
-        self.class_bce_weights = torch.tensor([0.5]) 
+        #self.class_bce_weights = torch.tensor([0.5]) 
         self.lovasz_weight = 0.2
-        self.class_lovasz_weights = torch.tensor([1.0]) 
+        #self.class_lovasz_weights = torch.tensor([1.0]) 
         self.bce_loss = torch.nn.BCEWithLogitsLoss()
         self.lovasz_loss = LovaszLoss()
 
     def forward(self, inputs, targets):
         # CrossEntropy Loss
         bce_loss_value = self.bce_loss(inputs, targets)
-        bce_loss_value = torch.sum(bce_loss_value * self.class_bce_weights)
+        #bce_loss_value = torch.sum(bce_loss_value * self.class_bce_weights)
 
         # Compute Lovasz Loss
         lovasz_loss_value = self.lovasz_loss(inputs, targets)
-        lovasz_loss_value = torch.sum(lovasz_loss_value * self.class_lovasz_weights)
+        #lovasz_loss_value = torch.sum(lovasz_loss_value * self.class_lovasz_weights)
 
         # Combine the losses with given weights
         combined_loss = self.bce_weight * bce_loss_value + self.lovasz_weight * lovasz_loss_value
