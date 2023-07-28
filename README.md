@@ -1,5 +1,5 @@
-# AI_contest_AIng
-2023 SUMMER AIng
-
-
-Train/Test Data Size ==> size info -- (1024, 1024, 3)
+# SW중심대학 공동 AI 경진대회 2023
+## #비전 #객체분할 #인공위성사진
+# 팀명 : AIng
+## 성적 31/227
+### (967명 227개 팀 참여)
