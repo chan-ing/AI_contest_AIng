@@ -3,3 +3,4 @@
 # 팀명 : AIng
 ## 성적 31 / 227
 ##### (967명 227개 팀 참여)
+##### https://dacon.io/competitions/official/236092/overview/description
